@@ -16,10 +16,17 @@ type LessonRepo struct {
 }
 
 func NewLessonRepo(db *mongo.Database) *LessonRepo {
+	if db == nil {
+		return &LessonRepo{coll: nil}
+	}
 	return &LessonRepo{coll: db.Collection("modules")}
 }
 
 func (r *LessonRepo) GetModules(courseID string) ([]models.Module, error) {
+	if r.coll == nil {
+		return []models.Module{}, nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -42,6 +49,10 @@ func (r *LessonRepo) GetModules(courseID string) ([]models.Module, error) {
 }
 
 func (r *LessonRepo) GetModule(moduleID string) (*models.Module, error) {
+	if r.coll == nil {
+		return nil, ErrNotFound
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -57,6 +68,10 @@ func (r *LessonRepo) GetModule(moduleID string) (*models.Module, error) {
 }
 
 func (r *LessonRepo) CreateModule(module *models.Module) error {
+	if r.coll == nil {
+		return fmt.Errorf("MongoDB no disponible")
+	}
+
 	module.ID = uuid.New().String()
 	module.CreatedAt = time.Now()
 	module.UpdatedAt = time.Now()
@@ -75,6 +90,10 @@ func (r *LessonRepo) CreateModule(module *models.Module) error {
 }
 
 func (r *LessonRepo) UpdateModule(module *models.Module) error {
+	if r.coll == nil {
+		return fmt.Errorf("MongoDB no disponible")
+	}
+
 	module.UpdatedAt = time.Now()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -96,6 +115,10 @@ func (r *LessonRepo) UpdateModule(module *models.Module) error {
 }
 
 func (r *LessonRepo) DeleteModule(moduleID string) error {
+	if r.coll == nil {
+		return fmt.Errorf("MongoDB no disponible")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -107,6 +130,10 @@ func (r *LessonRepo) DeleteModule(moduleID string) error {
 }
 
 func (r *LessonRepo) AddLesson(moduleID string, lesson *models.Lesson) error {
+	if r.coll == nil {
+		return fmt.Errorf("MongoDB no disponible")
+	}
+
 	lesson.ID = uuid.New().String()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -123,6 +150,10 @@ func (r *LessonRepo) AddLesson(moduleID string, lesson *models.Lesson) error {
 }
 
 func (r *LessonRepo) UpdateLesson(moduleID, lessonID string, lesson *models.Lesson) error {
+	if r.coll == nil {
+		return fmt.Errorf("MongoDB no disponible")
+	}
+
 	lesson.ID = lessonID
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -148,6 +179,10 @@ func (r *LessonRepo) UpdateLesson(moduleID, lessonID string, lesson *models.Less
 }
 
 func (r *LessonRepo) DeleteLesson(moduleID, lessonID string) error {
+	if r.coll == nil {
+		return fmt.Errorf("MongoDB no disponible")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

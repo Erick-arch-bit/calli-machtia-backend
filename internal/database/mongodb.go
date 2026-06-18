@@ -16,11 +16,13 @@ func InitMongoDB(uri, dbName string) *mongo.Database {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
-		log.Fatalf("Unable to connect to MongoDB: %v", err)
+		log.Printf("WARNING: Unable to connect to MongoDB: %v", err)
+		return nil
 	}
 
 	if err := client.Ping(ctx, nil); err != nil {
-		log.Fatalf("Unable to ping MongoDB: %v", err)
+		log.Printf("WARNING: Unable to ping MongoDB: %v", err)
+		return nil
 	}
 
 	fmt.Println("MongoDB connected successfully")
