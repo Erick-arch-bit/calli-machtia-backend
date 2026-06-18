@@ -28,11 +28,12 @@ func main() {
 	enrollRepo := repository.NewEnrollmentRepo(pg)
 	paymentRepo := repository.NewPaymentRepo(pg)
 	lessonRepo := repository.NewLessonRepo(mdb)
+	resetRepo := repository.NewPasswordResetRepo(pg)
 
 	authSvc := services.NewAuthService(cfg, rdb)
 	stripeSvc := services.NewStripeService(cfg, paymentRepo, enrollRepo)
 
-	authHandler := handlers.NewAuthHandler(authSvc, userRepo)
+	authHandler := handlers.NewAuthHandler(authSvc, userRepo, resetRepo)
 	courseHandler := handlers.NewCourseHandler(courseRepo, lessonRepo)
 	enrollHandler := handlers.NewEnrollmentHandler(enrollRepo, courseRepo)
 	lessonHandler := handlers.NewLessonHandler(lessonRepo)
@@ -59,6 +60,8 @@ func main() {
 			auth.POST("/refresh", authHandler.Refresh)
 			auth.PUT("/profile", middleware.AuthMiddleware(cfg.JWT_SECRET), authHandler.UpdateProfile)
 			auth.POST("/logout", middleware.AuthMiddleware(cfg.JWT_SECRET), authHandler.Logout)
+			auth.POST("/forgot-password", authHandler.ForgotPassword)
+			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
 		courses := api.Group("/courses")

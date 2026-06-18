@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +12,13 @@ import (
 )
 
 type AuthHandler struct {
-	authSvc *services.AuthService
-	userRepo *repository.UserRepo
+	authSvc        *services.AuthService
+	userRepo       *repository.UserRepo
+	resetRepo      *repository.PasswordResetRepo
 }
 
-func NewAuthHandler(authSvc *services.AuthService, userRepo *repository.UserRepo) *AuthHandler {
-	return &AuthHandler{authSvc: authSvc, userRepo: userRepo}
+func NewAuthHandler(authSvc *services.AuthService, userRepo *repository.UserRepo, resetRepo *repository.PasswordResetRepo) *AuthHandler {
+	return &AuthHandler{authSvc: authSvc, userRepo: userRepo, resetRepo: resetRepo}
 }
 
 type registerRequest struct {
@@ -267,4 +269,83 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{"message": "sesión cerrada"}})
+}
+
+type forgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req forgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email es requerido"})
+		return
+	}
+
+	user, err := h.userRepo.FindByEmail(req.Email)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"data": gin.H{"message": "si el email existe, recibirás un enlace de recuperación"}})
+		return
+	}
+
+	if err := h.resetRepo.InvalidateExistingTokens(user.Email); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al procesar solicitud"})
+		return
+	}
+
+	token, expiresAt, err := h.resetRepo.CreateToken(user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al generar token"})
+		return
+	}
+
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", c.Request.Header.Get("Origin"), token)
+
+	fmt.Printf("[PASSWORD RESET] Email: %s | Link: %s | Expires: %s\n", user.Email, resetLink, expiresAt)
+
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"message": "si el email existe, recibirás un enlace de recuperación"}})
+}
+
+type resetPasswordRequest struct {
+	Token    string `json:"token" binding:"required"`
+	Password string `json:"password" binding:"required,min=8"`
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req resetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token y contraseña son requeridos (mín. 8 caracteres)"})
+		return
+	}
+
+	email, err := h.resetRepo.ValidateToken(req.Token)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token inválido o expirado"})
+		return
+	}
+
+	user, err := h.userRepo.FindByEmail(email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al validar usuario"})
+		return
+	}
+
+	hash, err := h.authSvc.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al procesar contraseña"})
+		return
+	}
+
+	user.PasswordHash = hash
+	if err := h.userRepo.Update(user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al actualizar contraseña"})
+		return
+	}
+
+	if err := h.resetRepo.MarkTokenUsed(req.Token); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al marcar token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"message": "contraseña actualizada correctamente"}})
 }
