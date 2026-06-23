@@ -53,7 +53,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if req.Role == "" {
 		req.Role = models.RoleAlumno
 	}
-	if req.Role != models.RoleAlumno && req.Role != models.RoleInstructor {
+	if req.Role != models.RoleAlumno && req.Role != models.RoleInstructor && req.Role != models.RoleAdmin {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "rol inválido: debe ser alumno o instructor"})
 		return
 	}
