@@ -64,14 +64,16 @@ func main() {
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
+		api.GET("/categories", courseHandler.ListCategories)
+
 		courses := api.Group("/courses")
 		{
+			courses.GET("/instructor/mine", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor"), courseHandler.MyCourses)
 			courses.GET("", courseHandler.List)
 			courses.GET("/:slug", courseHandler.GetBySlug)
 			courses.POST("", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor", "admin"), courseHandler.Create)
 			courses.PUT("/:id", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor", "admin"), courseHandler.Update)
 			courses.DELETE("/:id", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor", "admin"), courseHandler.Delete)
-			courses.GET("/instructor/mine", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor"), courseHandler.MyCourses)
 		}
 
 		enrollments := api.Group("/enrollments")

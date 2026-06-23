@@ -66,7 +66,7 @@ func (r *CourseRepo) FindAll(filters map[string]string, page, limit int) ([]mode
 		return nil, 0, fmt.Errorf("count courses: %w", err)
 	}
 
-	dataQuery := "SELECT id, instructor_id, title, slug, description, image_url, price, category, published, seo_title, seo_description, created_at, updated_at FROM courses" +
+	dataQuery := "SELECT id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at FROM courses" +
 		whereClause + " ORDER BY created_at DESC LIMIT $" + fmt.Sprintf("%d", argIdx) + " OFFSET $" + fmt.Sprintf("%d", argIdx+1)
 	args = append(args, limit, offset)
 
@@ -80,7 +80,7 @@ func (r *CourseRepo) FindAll(filters map[string]string, page, limit int) ([]mode
 	for rows.Next() {
 		var c models.Course
 		err := rows.Scan(&c.ID, &c.InstructorID, &c.Title, &c.Slug,
-			&c.Description, &c.ImageURL, &c.Price, &c.Category,
+			&c.Description, &c.ImageURL, &c.Price, &c.Category, &c.Tags,
 			&c.Published, &c.SEOTitle, &c.SEODescription, &c.CreatedAt, &c.UpdatedAt)
 		if err != nil {
 			return nil, 0, fmt.Errorf("scan course: %w", err)
@@ -96,12 +96,12 @@ func (r *CourseRepo) FindAll(filters map[string]string, page, limit int) ([]mode
 }
 
 func (r *CourseRepo) FindBySlug(slug string) (*models.Course, error) {
-	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE slug = $1`
+	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE slug = $1`
 
 	course := &models.Course{}
 	err := r.db.QueryRow(context.Background(), query, slug).Scan(
 		&course.ID, &course.InstructorID, &course.Title, &course.Slug,
-		&course.Description, &course.ImageURL, &course.Price, &course.Category,
+		&course.Description, &course.ImageURL, &course.Price, &course.Category, &course.Tags,
 		&course.Published, &course.SEOTitle, &course.SEODescription, &course.CreatedAt, &course.UpdatedAt,
 	)
 	if err != nil {
@@ -114,12 +114,12 @@ func (r *CourseRepo) FindBySlug(slug string) (*models.Course, error) {
 }
 
 func (r *CourseRepo) FindByID(id string) (*models.Course, error) {
-	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE id = $1`
+	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE id = $1`
 
 	course := &models.Course{}
 	err := r.db.QueryRow(context.Background(), query, id).Scan(
 		&course.ID, &course.InstructorID, &course.Title, &course.Slug,
-		&course.Description, &course.ImageURL, &course.Price, &course.Category,
+		&course.Description, &course.ImageURL, &course.Price, &course.Category, &course.Tags,
 		&course.Published, &course.SEOTitle, &course.SEODescription, &course.CreatedAt, &course.UpdatedAt,
 	)
 	if err != nil {
@@ -132,7 +132,7 @@ func (r *CourseRepo) FindByID(id string) (*models.Course, error) {
 }
 
 func (r *CourseRepo) FindByInstructorID(instructorID string) ([]models.Course, error) {
-	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE instructor_id = $1 ORDER BY created_at DESC`
+	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE instructor_id = $1 ORDER BY created_at DESC`
 
 	rows, err := r.db.Query(context.Background(), query, instructorID)
 	if err != nil {
@@ -144,7 +144,7 @@ func (r *CourseRepo) FindByInstructorID(instructorID string) ([]models.Course, e
 	for rows.Next() {
 		var c models.Course
 		err := rows.Scan(&c.ID, &c.InstructorID, &c.Title, &c.Slug,
-			&c.Description, &c.ImageURL, &c.Price, &c.Category,
+			&c.Description, &c.ImageURL, &c.Price, &c.Category, &c.Tags,
 			&c.Published, &c.SEOTitle, &c.SEODescription, &c.CreatedAt, &c.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("scan course: %w", err)
@@ -164,13 +164,13 @@ func (r *CourseRepo) Create(course *models.Course) error {
 	course.CreatedAt = time.Now()
 	course.UpdatedAt = time.Now()
 
-	query := `INSERT INTO courses (id, instructor_id, title, slug, description, image_url, price, category, published, seo_title, seo_description, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+	query := `INSERT INTO courses (id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
 
 	_, err := r.db.Exec(context.Background(), query,
 		course.ID, course.InstructorID, course.Title, course.Slug,
 		course.Description, course.ImageURL, course.Price, course.Category,
-		course.Published, course.SEOTitle, course.SEODescription,
+		course.Tags, course.Published, course.SEOTitle, course.SEODescription,
 		course.CreatedAt, course.UpdatedAt,
 	)
 	if err != nil {
@@ -182,11 +182,11 @@ func (r *CourseRepo) Create(course *models.Course) error {
 func (r *CourseRepo) Update(course *models.Course) error {
 	course.UpdatedAt = time.Now()
 
-	query := `UPDATE courses SET title=$1, slug=$2, description=$3, image_url=$4, price=$5, category=$6, published=$7, seo_title=$8, seo_description=$9, updated_at=$10 WHERE id=$11`
+	query := `UPDATE courses SET title=$1, slug=$2, description=$3, image_url=$4, price=$5, category=$6, tags=$7, published=$8, seo_title=$9, seo_description=$10, updated_at=$11 WHERE id=$12`
 
 	_, err := r.db.Exec(context.Background(), query,
 		course.Title, course.Slug, course.Description, course.ImageURL,
-		course.Price, course.Category, course.Published, course.SEOTitle,
+		course.Price, course.Category, course.Tags, course.Published, course.SEOTitle,
 		course.SEODescription, course.UpdatedAt, course.ID,
 	)
 	if err != nil {
@@ -202,6 +202,29 @@ func (r *CourseRepo) Delete(id, instructorID string) error {
 		return fmt.Errorf("delete course: %w", err)
 	}
 	return nil
+}
+
+func (r *CourseRepo) FindCategories() ([]string, error) {
+	rows, err := r.db.Query(context.Background(),
+		`SELECT DISTINCT category FROM courses WHERE category IS NOT NULL AND category != '' ORDER BY category`)
+	if err != nil {
+		return nil, fmt.Errorf("find categories: %w", err)
+	}
+	defer rows.Close()
+
+	var categories []string
+	for rows.Next() {
+		var cat string
+		if err := rows.Scan(&cat); err != nil {
+			return nil, fmt.Errorf("scan category: %w", err)
+		}
+		categories = append(categories, cat)
+	}
+
+	if categories == nil {
+		categories = []string{}
+	}
+	return categories, nil
 }
 
 func (r *CourseRepo) ForceDelete(id string) error {

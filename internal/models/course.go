@@ -11,6 +11,7 @@ type Course struct {
 	ImageURL       *string   `json:"image_url,omitempty" db:"image_url"`
 	Price          float64   `json:"price" db:"price"`
 	Category       *string   `json:"category,omitempty" db:"category"`
+	Tags           []string  `json:"tags,omitempty" db:"tags"`
 	Published      bool      `json:"published" db:"published"`
 	SEOTitle       *string   `json:"seo_title,omitempty" db:"seo_title"`
 	SEODescription *string   `json:"seo_description,omitempty" db:"seo_description"`

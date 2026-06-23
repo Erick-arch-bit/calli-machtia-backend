@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -20,22 +21,24 @@ func NewCourseHandler(courseRepo *repository.CourseRepo, lessonRepo *repository.
 }
 
 type createCourseRequest struct {
-	Title       string  `json:"title" binding:"required"`
-	Description string  `json:"description"`
-	ImageURL    string  `json:"image_url"`
-	Price       float64 `json:"price"`
-	Category    string  `json:"category"`
+	Title       string   `json:"title" binding:"required"`
+	Description string   `json:"description"`
+	ImageURL    string   `json:"image_url"`
+	Price       float64  `json:"price"`
+	Category    string   `json:"category"`
+	Tags        []string `json:"tags"`
 }
 
 type updateCourseRequest struct {
-	Title       *string  `json:"title"`
-	Description *string  `json:"description"`
-	ImageURL    *string  `json:"image_url"`
-	Price       *float64 `json:"price"`
-	Category    *string  `json:"category"`
-	Published   *bool    `json:"published"`
-	SEOTitle    *string  `json:"seo_title"`
-	SEODescription *string `json:"seo_description"`
+	Title          *string   `json:"title"`
+	Description    *string   `json:"description"`
+	ImageURL       *string   `json:"image_url"`
+	Price          *float64  `json:"price"`
+	Category       *string   `json:"category"`
+	Tags           *[]string `json:"tags"`
+	Published      *bool     `json:"published"`
+	SEOTitle       *string   `json:"seo_title"`
+	SEODescription *string   `json:"seo_description"`
 }
 
 func slugify(text string) string {
@@ -74,12 +77,23 @@ func (h *CourseHandler) List(c *gin.Context) {
 	}
 
 	page := 1
-	limit := 50
+	limit := 12
+	if p, err := parseInt(c.Query("page")); err == nil && p > 0 {
+		page = p
+	}
+	if l, err := parseInt(c.Query("limit")); err == nil && l > 0 && l <= 50 {
+		limit = l
+	}
 
 	courses, total, err := h.courseRepo.FindAll(filters, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al cargar cursos"})
 		return
+	}
+
+	pages := int(total) / limit
+	if int(total)%limit > 0 {
+		pages++
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -88,8 +102,20 @@ func (h *CourseHandler) List(c *gin.Context) {
 			"total": total,
 			"page":  page,
 			"limit": limit,
+			"pages": pages,
 		},
 	})
+}
+
+func parseInt(s string) (int, error) {
+	var n int
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return 0, fmt.Errorf("not a number")
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n, nil
 }
 
 func (h *CourseHandler) GetBySlug(c *gin.Context) {
@@ -139,6 +165,10 @@ func (h *CourseHandler) Create(c *gin.Context) {
 	if req.Category == "" {
 		category = nil
 	}
+	tags := req.Tags
+	if tags == nil {
+		tags = []string{}
+	}
 
 	course := &models.Course{
 		InstructorID: middleware.GetUserID(c),
@@ -148,6 +178,7 @@ func (h *CourseHandler) Create(c *gin.Context) {
 		ImageURL:     imageURL,
 		Price:        req.Price,
 		Category:     category,
+		Tags:         tags,
 		Published:    false,
 	}
 
@@ -213,6 +244,9 @@ func (h *CourseHandler) Update(c *gin.Context) {
 			course.Category = req.Category
 		}
 	}
+	if req.Tags != nil {
+		course.Tags = *req.Tags
+	}
 	if req.Published != nil {
 		course.Published = *req.Published
 	}
@@ -241,6 +275,16 @@ func (h *CourseHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": gin.H{"message": "curso eliminado"}})
+}
+
+func (h *CourseHandler) ListCategories(c *gin.Context) {
+	categories, err := h.courseRepo.FindCategories()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al cargar categorías"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": categories})
 }
 
 func (h *CourseHandler) MyCourses(c *gin.Context) {
