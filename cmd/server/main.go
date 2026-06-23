@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -50,6 +51,27 @@ func main() {
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Calli Machtia API", "version": "1.0.0"})
+	})
+
+	r.GET("/health", func(c *gin.Context) {
+		dbOK := false
+		if err := pg.Ping(context.Background()); err == nil {
+			dbOK = true
+		}
+		mdbOK := mdb != nil
+		rdbOK := rdb != nil
+		if rdb != nil {
+			if err := rdb.Ping(context.Background()).Err(); err != nil {
+				rdbOK = false
+			}
+		}
+		c.JSON(200, gin.H{
+			"status":   "ok",
+			"version":  "1.0.0",
+			"database": dbOK,
+			"mongodb":  mdbOK,
+			"redis":    rdbOK,
+		})
 	})
 
 	api := r.Group("/api")

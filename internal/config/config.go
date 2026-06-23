@@ -62,7 +62,7 @@ func Load() *Config {
 		JWT_REFRESH_EXPIRY: refreshExpiry,
 		STRIPE_SECRET_KEY:      getEnv("STRIPE_SECRET_KEY", ""),
 		STRIPE_WEBHOOK_SECRET:  getEnv("STRIPE_WEBHOOK_SECRET", ""),
-		CORS_ORIGIN:       getEnv("CORS_ORIGIN", "https://calli-machtia-frontend.up.railway.app"),
+		CORS_ORIGIN:       getEnv("CORS_ORIGIN", "https://calli-machtia.up.railway.app"),
 		ENV:               getEnv("ENV", "development"),
 	}
 }
