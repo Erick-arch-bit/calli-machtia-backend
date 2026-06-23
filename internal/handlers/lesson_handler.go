@@ -49,7 +49,7 @@ type updateLessonRequest struct {
 }
 
 func (h *LessonHandler) GetModules(c *gin.Context) {
-	courseID := c.Param("courseId")
+	courseID := c.Param("id")
 
 	modules, err := h.lessonRepo.GetModules(courseID)
 	if err != nil {
@@ -77,7 +77,7 @@ func (h *LessonHandler) GetModule(c *gin.Context) {
 }
 
 func (h *LessonHandler) CreateModule(c *gin.Context) {
-	courseID := c.Param("courseId")
+	courseID := c.Param("id")
 
 	var req createModuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

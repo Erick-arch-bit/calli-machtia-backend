@@ -94,7 +94,7 @@ func main() {
 		{
 			courses.GET("/instructor/mine", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor"), courseHandler.MyCourses)
 			courses.GET("", courseHandler.List)
-			courses.GET("/:slug", courseHandler.GetBySlug)
+			courses.GET("/slug/:slug", courseHandler.GetBySlug)
 			courses.POST("", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor", "admin"), courseHandler.Create)
 			courses.PUT("/:id", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor", "admin"), courseHandler.Update)
 			courses.DELETE("/:id", middleware.AuthMiddleware(cfg.JWT_SECRET), middleware.RoleMiddleware("instructor", "admin"), courseHandler.Delete)
@@ -109,7 +109,7 @@ func main() {
 			enrollments.DELETE("/:id", middleware.AuthMiddleware(cfg.JWT_SECRET), enrollHandler.Unenroll)
 		}
 
-		content := api.Group("/courses/:courseId/modules")
+		content := api.Group("/courses/:id/modules")
 		{
 			content.GET("", lessonHandler.GetModules)
 			content.GET("/:moduleId", lessonHandler.GetModule)
