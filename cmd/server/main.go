@@ -21,7 +21,9 @@ func main() {
 
 	mdb := database.InitMongoDB(cfg.MONGODB_URI, cfg.MONGODB_DATABASE)
 	rdb := database.InitRedis(cfg.REDIS_URL)
-	defer rdb.Close()
+	if rdb != nil {
+		defer rdb.Close()
+	}
 
 	userRepo := repository.NewUserRepo(pg)
 	courseRepo := repository.NewCourseRepo(pg)

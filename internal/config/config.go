@@ -57,12 +57,12 @@ func Load() *Config {
 		MONGODB_URI:       getEnv("MONGODB_URI", "mongodb://localhost:27017"),
 		MONGODB_DATABASE:  getEnv("MONGODB_DATABASE", "calli_machtia"),
 		REDIS_URL:         getEnv("REDIS_URL", "redis://localhost:6379"),
-		JWT_SECRET:        getEnvRequired("JWT_SECRET"),
+		JWT_SECRET:        getEnv("JWT_SECRET", "dev-secret-change-in-production-abc123"),
 		JWT_ACCESS_EXPIRY:  accessExpiry,
 		JWT_REFRESH_EXPIRY: refreshExpiry,
 		STRIPE_SECRET_KEY:      getEnv("STRIPE_SECRET_KEY", ""),
 		STRIPE_WEBHOOK_SECRET:  getEnv("STRIPE_WEBHOOK_SECRET", ""),
-		CORS_ORIGIN:       getEnv("CORS_ORIGIN", "http://localhost:4321"),
+		CORS_ORIGIN:       getEnv("CORS_ORIGIN", "https://calli-machtia-frontend.up.railway.app"),
 		ENV:               getEnv("ENV", "development"),
 	}
 }
