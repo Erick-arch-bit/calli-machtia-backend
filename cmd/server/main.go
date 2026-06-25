@@ -19,6 +19,7 @@ func main() {
 
 	pg := database.InitPostgres(cfg.DATABASE_URL)
 	defer pg.Close()
+	database.RunMigrations(pg)
 
 	mdb := database.InitMongoDB(cfg.MONGODB_URI, cfg.MONGODB_DATABASE)
 	rdb := database.InitRedis(cfg.REDIS_URL)
@@ -46,8 +47,9 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
-	r.Use(middleware.CORSMiddleware(cfg.CORS_ORIGIN))
-	r.Use(middleware.RateLimitMiddleware(rdb))
+	r.Use(middleware.CORSMiddleware(cfg.CORS_ORIGINS))
+	r.Use(middleware.SecurityHeadersMiddleware())
+	r.Use(middleware.RateLimitMiddleware(rdb, cfg.RATE_LIMIT))
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Calli Machtia API", "version": "1.0.0"})

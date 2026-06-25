@@ -1,7 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -19,6 +21,8 @@ type Config struct {
 	STRIPE_SECRET_KEY      string
 	STRIPE_WEBHOOK_SECRET  string
 	CORS_ORIGIN       string
+	CORS_ORIGINS      []string
+	RATE_LIMIT        int
 	ENV               string
 }
 
@@ -37,6 +41,17 @@ func getEnvRequired(key string) string {
 	return val
 }
 
+func parseInt(s string) (int, error) {
+	var n int
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return 0, fmt.Errorf("not a number")
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n, nil
+}
+
 func parseDuration(s string, defaultVal time.Duration) time.Duration {
 	d, err := time.ParseDuration(s)
 	if err != nil {
@@ -51,6 +66,17 @@ func Load() *Config {
 	accessExpiry := parseDuration(getEnv("JWT_ACCESS_EXPIRY", "15m"), 15*time.Minute)
 	refreshExpiry := parseDuration(getEnv("JWT_REFRESH_EXPIRY", "7d"), 7*24*time.Hour)
 
+	corsOrigin := getEnv("CORS_ORIGIN", "https://calli-machtia.up.railway.app")
+	corsOrigins := strings.Split(corsOrigin, ",")
+	for i := range corsOrigins {
+		corsOrigins[i] = strings.TrimSpace(corsOrigins[i])
+	}
+
+	rateLimit := 100
+	if rl, err := parseInt(getEnv("RATE_LIMIT", "100")); err == nil && rl > 0 {
+		rateLimit = rl
+	}
+
 	return &Config{
 		PORT:              getEnv("PORT", "8080"),
 		DATABASE_URL:      getEnvRequired("DATABASE_URL"),
@@ -62,7 +88,9 @@ func Load() *Config {
 		JWT_REFRESH_EXPIRY: refreshExpiry,
 		STRIPE_SECRET_KEY:      getEnv("STRIPE_SECRET_KEY", ""),
 		STRIPE_WEBHOOK_SECRET:  getEnv("STRIPE_WEBHOOK_SECRET", ""),
-		CORS_ORIGIN:       getEnv("CORS_ORIGIN", "https://calli-machtia.up.railway.app"),
+		CORS_ORIGIN:       corsOrigin,
+		CORS_ORIGINS:      corsOrigins,
+		RATE_LIMIT:        rateLimit,
 		ENV:               getEnv("ENV", "development"),
 	}
 }

@@ -8,10 +8,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const rateLimit = 100
 const rateWindow = time.Minute
 
-func RateLimitMiddleware(rdb *redis.Client) gin.HandlerFunc {
+func RateLimitMiddleware(rdb *redis.Client, rateLimit int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if rdb == nil {
 			c.Next()
@@ -32,7 +31,7 @@ func RateLimitMiddleware(rdb *redis.Client) gin.HandlerFunc {
 			rdb.Expire(ctx, key, rateWindow)
 		}
 
-		if count > rateLimit {
+		if count > int64(rateLimit) {
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"error": "rate limit exceeded, try again in a minute",
 			})

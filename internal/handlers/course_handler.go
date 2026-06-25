@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -78,10 +78,10 @@ func (h *CourseHandler) List(c *gin.Context) {
 
 	page := 1
 	limit := 12
-	if p, err := parseInt(c.Query("page")); err == nil && p > 0 {
+	if p, err := strconv.Atoi(c.Query("page")); err == nil && p > 0 {
 		page = p
 	}
-	if l, err := parseInt(c.Query("limit")); err == nil && l > 0 && l <= 50 {
+	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 && l <= 50 {
 		limit = l
 	}
 
@@ -105,17 +105,6 @@ func (h *CourseHandler) List(c *gin.Context) {
 			"pages": pages,
 		},
 	})
-}
-
-func parseInt(s string) (int, error) {
-	var n int
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0, fmt.Errorf("not a number")
-		}
-		n = n*10 + int(c-'0')
-	}
-	return n, nil
 }
 
 func (h *CourseHandler) GetBySlug(c *gin.Context) {

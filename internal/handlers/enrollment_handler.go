@@ -78,23 +78,10 @@ func (h *EnrollmentHandler) Enroll(c *gin.Context) {
 func (h *EnrollmentHandler) MyEnrollments(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
-	enrollments, err := h.enrollRepo.FindByUser(userID)
+	result, err := h.enrollRepo.FindByUserWithCourses(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al cargar inscripciones"})
 		return
-	}
-
-	type enrollmentWithCourse struct {
-		models.Enrollment
-		Course *models.Course `json:"course"`
-	}
-
-	result := make([]enrollmentWithCourse, 0, len(enrollments))
-	for _, e := range enrollments {
-		course, err := h.courseRepo.FindByID(e.CourseID)
-		if err == nil && course != nil {
-			result = append(result, enrollmentWithCourse{Enrollment: e, Course: course})
-		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": result})
@@ -166,6 +153,23 @@ func (h *EnrollmentHandler) UpdateProgress(c *gin.Context) {
 
 func (h *EnrollmentHandler) Unenroll(c *gin.Context) {
 	id := c.Param("id")
+	userID := middleware.GetUserID(c)
+	role := middleware.GetRole(c)
+
+	e, err := h.enrollRepo.FindByID(id)
+	if err != nil {
+		if err == repository.ErrNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "inscripción no encontrada"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al buscar inscripción"})
+		return
+	}
+
+	if e.UserID != userID && role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "no tienes permiso para cancelar esta inscripción"})
+		return
+	}
 
 	if err := h.enrollRepo.Delete(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error al cancelar inscripción"})

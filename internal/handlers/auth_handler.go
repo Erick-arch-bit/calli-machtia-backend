@@ -101,10 +101,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"data": gin.H{
 			"user": gin.H{
-				"id":    user.ID,
-				"name":  user.Name,
-				"email": user.Email,
-				"role":  user.Role,
+				"id":         user.ID,
+				"name":       user.Name,
+				"email":      user.Email,
+				"role":       user.Role,
+				"avatar_url": user.AvatarURL,
+				"bio":        user.Bio,
 			},
 			"accessToken":  accessToken,
 			"refreshToken": refreshToken,

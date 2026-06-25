@@ -70,6 +70,11 @@ func (r *EnrollmentRepo) FindByUserAndCourse(userID, courseID string) (*models.E
 	return e, nil
 }
 
+type EnrollmentWithCourse struct {
+	models.Enrollment
+	Course *models.Course `json:"course"`
+}
+
 func (r *EnrollmentRepo) FindByUser(userID string) ([]models.Enrollment, error) {
 	query := `SELECT id, user_id, course_id, status, progress, created_at, updated_at FROM enrollments WHERE user_id = $1 ORDER BY created_at DESC`
 
@@ -94,6 +99,49 @@ func (r *EnrollmentRepo) FindByUser(userID string) ([]models.Enrollment, error) 
 	}
 
 	return enrollments, nil
+}
+
+func (r *EnrollmentRepo) FindByUserWithCourses(userID string) ([]EnrollmentWithCourse, error) {
+	query := `SELECT e.id, e.user_id, e.course_id, e.status, e.progress, e.created_at, e.updated_at,
+		c.id, c.instructor_id, COALESCE(uc.name, ''), c.title, c.slug,
+		c.description, c.image_url, c.price, c.category, c.tags, c.published,
+		c.seo_title, c.seo_description, c.created_at, c.updated_at,
+		COALESCE(ec.cnt, 0)
+		FROM enrollments e
+		INNER JOIN courses c ON c.id = e.course_id
+		LEFT JOIN users uc ON uc.id = c.instructor_id
+		LEFT JOIN (SELECT course_id, COUNT(*) as cnt FROM enrollments GROUP BY course_id) ec ON ec.course_id = c.id
+		WHERE e.user_id = $1
+		ORDER BY e.created_at DESC`
+
+	rows, err := r.db.Query(context.Background(), query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("find enrollments with courses: %w", err)
+	}
+	defer rows.Close()
+
+	var result []EnrollmentWithCourse
+	for rows.Next() {
+		var ew EnrollmentWithCourse
+		ew.Course = &models.Course{}
+		err := rows.Scan(
+			&ew.ID, &ew.UserID, &ew.CourseID, &ew.Status, &ew.Progress, &ew.CreatedAt, &ew.UpdatedAt,
+			&ew.Course.ID, &ew.Course.InstructorID, &ew.Course.InstructorName, &ew.Course.Title, &ew.Course.Slug,
+			&ew.Course.Description, &ew.Course.ImageURL, &ew.Course.Price, &ew.Course.Category, &ew.Course.Tags,
+			&ew.Course.Published, &ew.Course.SEOTitle, &ew.Course.SEODescription, &ew.Course.CreatedAt, &ew.Course.UpdatedAt,
+			&ew.Course.EnrollmentCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan enrollment with course: %w", err)
+		}
+		result = append(result, ew)
+	}
+
+	if result == nil {
+		result = []EnrollmentWithCourse{}
+	}
+
+	return result, nil
 }
 
 func (r *EnrollmentRepo) FindByCourse(courseID string) ([]models.Enrollment, error) {

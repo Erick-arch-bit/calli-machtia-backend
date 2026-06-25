@@ -32,23 +32,23 @@ func (r *CourseRepo) FindAll(filters map[string]string, page, limit int) ([]mode
 	}
 
 	if pub, ok := filters["published"]; ok && pub != "" {
-		where = append(where, fmt.Sprintf("published = $%d", argIdx))
+		where = append(where, fmt.Sprintf("c.published = $%d", argIdx))
 		args = append(args, pub == "true")
 		argIdx++
 	} else if _, ok := filters["published"]; !ok {
-		where = append(where, fmt.Sprintf("published = $%d", argIdx))
+		where = append(where, fmt.Sprintf("c.published = $%d", argIdx))
 		args = append(args, true)
 		argIdx++
 	}
 
 	if cat, ok := filters["category"]; ok && cat != "" {
-		where = append(where, fmt.Sprintf("category = $%d", argIdx))
+		where = append(where, fmt.Sprintf("c.category = $%d", argIdx))
 		args = append(args, cat)
 		argIdx++
 	}
 
 	if search, ok := filters["search"]; ok && search != "" {
-		where = append(where, fmt.Sprintf("(title ILIKE $%d OR description ILIKE $%d)", argIdx, argIdx+1))
+		where = append(where, fmt.Sprintf("(c.title ILIKE $%d OR c.description ILIKE $%d)", argIdx, argIdx+1))
 		searchPattern := "%" + search + "%"
 		args = append(args, searchPattern, searchPattern)
 		argIdx += 2
@@ -60,14 +60,20 @@ func (r *CourseRepo) FindAll(filters map[string]string, page, limit int) ([]mode
 	}
 
 	var total int64
-	countQuery := "SELECT COUNT(*) FROM courses" + whereClause
+	countQuery := "SELECT COUNT(*) FROM courses c" + whereClause
 	err := r.db.QueryRow(context.Background(), countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, fmt.Errorf("count courses: %w", err)
 	}
 
-	dataQuery := "SELECT id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at FROM courses" +
-		whereClause + " ORDER BY created_at DESC LIMIT $" + fmt.Sprintf("%d", argIdx) + " OFFSET $" + fmt.Sprintf("%d", argIdx+1)
+	dataQuery := `SELECT c.id, c.instructor_id, COALESCE(u.name, ''), c.title, c.slug,
+		c.description, c.image_url, c.price, c.category, c.tags, c.published,
+		c.seo_title, c.seo_description, c.created_at, c.updated_at,
+		COALESCE(ec.cnt, 0)
+		FROM courses c
+		LEFT JOIN users u ON u.id = c.instructor_id
+		LEFT JOIN (SELECT course_id, COUNT(*) as cnt FROM enrollments GROUP BY course_id) ec ON ec.course_id = c.id` +
+		whereClause + " ORDER BY c.created_at DESC LIMIT $" + fmt.Sprintf("%d", argIdx) + " OFFSET $" + fmt.Sprintf("%d", argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(context.Background(), dataQuery, args...)
@@ -79,9 +85,10 @@ func (r *CourseRepo) FindAll(filters map[string]string, page, limit int) ([]mode
 	var courses []models.Course
 	for rows.Next() {
 		var c models.Course
-		err := rows.Scan(&c.ID, &c.InstructorID, &c.Title, &c.Slug,
+		err := rows.Scan(&c.ID, &c.InstructorID, &c.InstructorName, &c.Title, &c.Slug,
 			&c.Description, &c.ImageURL, &c.Price, &c.Category, &c.Tags,
-			&c.Published, &c.SEOTitle, &c.SEODescription, &c.CreatedAt, &c.UpdatedAt)
+			&c.Published, &c.SEOTitle, &c.SEODescription, &c.CreatedAt, &c.UpdatedAt,
+			&c.EnrollmentCount)
 		if err != nil {
 			return nil, 0, fmt.Errorf("scan course: %w", err)
 		}
@@ -96,13 +103,21 @@ func (r *CourseRepo) FindAll(filters map[string]string, page, limit int) ([]mode
 }
 
 func (r *CourseRepo) FindBySlug(slug string) (*models.Course, error) {
-	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE slug = $1`
+	query := `SELECT c.id, c.instructor_id, COALESCE(u.name, ''), c.title, c.slug,
+		c.description, c.image_url, c.price, c.category, c.tags, c.published,
+		c.seo_title, c.seo_description, c.created_at, c.updated_at,
+		COALESCE(ec.cnt, 0)
+		FROM courses c
+		LEFT JOIN users u ON u.id = c.instructor_id
+		LEFT JOIN (SELECT course_id, COUNT(*) as cnt FROM enrollments GROUP BY course_id) ec ON ec.course_id = c.id
+		WHERE c.slug = $1`
 
 	course := &models.Course{}
 	err := r.db.QueryRow(context.Background(), query, slug).Scan(
-		&course.ID, &course.InstructorID, &course.Title, &course.Slug,
+		&course.ID, &course.InstructorID, &course.InstructorName, &course.Title, &course.Slug,
 		&course.Description, &course.ImageURL, &course.Price, &course.Category, &course.Tags,
 		&course.Published, &course.SEOTitle, &course.SEODescription, &course.CreatedAt, &course.UpdatedAt,
+		&course.EnrollmentCount,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -114,13 +129,21 @@ func (r *CourseRepo) FindBySlug(slug string) (*models.Course, error) {
 }
 
 func (r *CourseRepo) FindByID(id string) (*models.Course, error) {
-	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE id = $1`
+	query := `SELECT c.id, c.instructor_id, COALESCE(u.name, ''), c.title, c.slug,
+		c.description, c.image_url, c.price, c.category, c.tags, c.published,
+		c.seo_title, c.seo_description, c.created_at, c.updated_at,
+		COALESCE(ec.cnt, 0)
+		FROM courses c
+		LEFT JOIN users u ON u.id = c.instructor_id
+		LEFT JOIN (SELECT course_id, COUNT(*) as cnt FROM enrollments GROUP BY course_id) ec ON ec.course_id = c.id
+		WHERE c.id = $1`
 
 	course := &models.Course{}
 	err := r.db.QueryRow(context.Background(), query, id).Scan(
-		&course.ID, &course.InstructorID, &course.Title, &course.Slug,
+		&course.ID, &course.InstructorID, &course.InstructorName, &course.Title, &course.Slug,
 		&course.Description, &course.ImageURL, &course.Price, &course.Category, &course.Tags,
 		&course.Published, &course.SEOTitle, &course.SEODescription, &course.CreatedAt, &course.UpdatedAt,
+		&course.EnrollmentCount,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -132,7 +155,14 @@ func (r *CourseRepo) FindByID(id string) (*models.Course, error) {
 }
 
 func (r *CourseRepo) FindByInstructorID(instructorID string) ([]models.Course, error) {
-	query := `SELECT id, instructor_id, title, slug, description, image_url, price, category, tags, published, seo_title, seo_description, created_at, updated_at FROM courses WHERE instructor_id = $1 ORDER BY created_at DESC`
+	query := `SELECT c.id, c.instructor_id, COALESCE(u.name, ''), c.title, c.slug,
+		c.description, c.image_url, c.price, c.category, c.tags, c.published,
+		c.seo_title, c.seo_description, c.created_at, c.updated_at,
+		COALESCE(ec.cnt, 0)
+		FROM courses c
+		LEFT JOIN users u ON u.id = c.instructor_id
+		LEFT JOIN (SELECT course_id, COUNT(*) as cnt FROM enrollments GROUP BY course_id) ec ON ec.course_id = c.id
+		WHERE c.instructor_id = $1 ORDER BY c.created_at DESC`
 
 	rows, err := r.db.Query(context.Background(), query, instructorID)
 	if err != nil {
@@ -143,9 +173,10 @@ func (r *CourseRepo) FindByInstructorID(instructorID string) ([]models.Course, e
 	var courses []models.Course
 	for rows.Next() {
 		var c models.Course
-		err := rows.Scan(&c.ID, &c.InstructorID, &c.Title, &c.Slug,
+		err := rows.Scan(&c.ID, &c.InstructorID, &c.InstructorName, &c.Title, &c.Slug,
 			&c.Description, &c.ImageURL, &c.Price, &c.Category, &c.Tags,
-			&c.Published, &c.SEOTitle, &c.SEODescription, &c.CreatedAt, &c.UpdatedAt)
+			&c.Published, &c.SEOTitle, &c.SEODescription, &c.CreatedAt, &c.UpdatedAt,
+			&c.EnrollmentCount)
 		if err != nil {
 			return nil, fmt.Errorf("scan course: %w", err)
 		}
