@@ -16,6 +16,7 @@ import {
 } from "../lib/jwt";
 import { authMiddleware } from "../middleware/auth";
 import { badRequest, unauthorized, notFound, conflict } from "../lib/errors";
+import { sendPasswordResetEmail } from "../services/email";
 import type { Context } from "hono";
 
 const auth = new Hono();
@@ -278,8 +279,7 @@ auth.post("/forgot-password", async (c: Context) => {
     expires_at: expiresAt,
   });
 
-  // In production, send email here
-  console.log(`Password reset token for ${email}: ${token}`);
+  await sendPasswordResetEmail(email, token);
 
   return c.json({ data: { message: "Si el email existe, recibirás un enlace de recuperación" } });
 });
