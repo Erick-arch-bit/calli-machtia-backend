@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, like, or, sql, isNull, count } from "drizzle-orm";
+import { eq, and, like, or, sql, count } from "drizzle-orm";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db/postgres";
@@ -53,7 +53,7 @@ course.get("/instructor/mine", authMiddleware, roleMiddleware("instructor", "adm
   const result = await db
     .select()
     .from(courses)
-    .where(and(eq(courses.instructor_id, userId), isNull(courses.deleted_at)))
+    .where(eq(courses.instructor_id, userId))
     .orderBy(courses.created_at);
 
   return c.json({ data: result });
@@ -67,7 +67,7 @@ course.get("/", async (c: Context) => {
   const search = query.search;
   const offset = (page - 1) * limit;
 
-  const conditions = [isNull(courses.deleted_at), eq(courses.published, true)];
+  const conditions = [eq(courses.published, true)];
 
   if (category) {
     conditions.push(eq(courses.category, category));
@@ -153,7 +153,7 @@ course.get("/slug/:slug", async (c: Context) => {
     })
     .from(courses)
     .leftJoin(users, eq(courses.instructor_id, users.id))
-    .where(and(eq(courses.slug, slug), isNull(courses.deleted_at)))
+    .where(eq(courses.slug, slug))
     .limit(1);
 
   if (result.length === 0) {
@@ -189,7 +189,7 @@ course.get("/:id", async (c: Context) => {
     })
     .from(courses)
     .leftJoin(users, eq(courses.instructor_id, users.id))
-    .where(and(eq(courses.id, id), isNull(courses.deleted_at)))
+    .where(eq(courses.id, id))
     .limit(1);
 
   if (result.length === 0) {
@@ -221,7 +221,7 @@ course.post("/", authMiddleware, roleMiddleware("instructor", "admin"), async (c
     image_url: image_url || null,
     price: price.toString(),
     category: category || null,
-    tags: tags || null,
+    tags: tags || [],
     published: published || false,
     seo_title: seo_title || null,
     seo_description: seo_description || null,
@@ -287,10 +287,7 @@ course.delete("/:id", authMiddleware, roleMiddleware("instructor", "admin"), asy
     throw forbidden("No tienes permiso para eliminar este curso");
   }
 
-  await db
-    .update(courses)
-    .set({ deleted_at: new Date() })
-    .where(eq(courses.id, id));
+  await db.delete(courses).where(eq(courses.id, id));
 
   return c.json({ data: { message: "Curso eliminado exitosamente" } });
 });

@@ -12,7 +12,7 @@ export const payments = pgTable("payments", {
     .notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").default("usd").notNull(),
-  stripe_payment_intent_id: text("stripe_payment_intent_id"),
+  stripe_payment_id: text("stripe_payment_id"),
   status: text("status").default("pending").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

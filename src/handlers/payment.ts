@@ -73,7 +73,7 @@ payment.post("/create-intent", authMiddleware, async (c: Context) => {
       course_id,
       amount: courseItem.price,
       currency: "usd",
-      stripe_payment_intent_id: paymentIntent.id,
+      stripe_payment_id: paymentIntent.id,
       status: "pending",
     });
 
@@ -119,7 +119,7 @@ payment.post("/webhook", async (c: Context) => {
         await db
           .update(payments)
           .set({ status: "completed" })
-          .where(eq(payments.stripe_payment_intent_id, paymentIntent.id));
+          .where(eq(payments.stripe_payment_id, paymentIntent.id));
 
         const existingEnrollment = await db
           .select()
@@ -144,7 +144,7 @@ payment.post("/webhook", async (c: Context) => {
       await db
         .update(payments)
         .set({ status: "failed" })
-        .where(eq(payments.stripe_payment_intent_id, paymentIntent.id));
+        .where(eq(payments.stripe_payment_id, paymentIntent.id));
     }
   } catch (err) {
     console.error("Webhook processing error:", err);

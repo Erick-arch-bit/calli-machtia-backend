@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db/postgres";
@@ -31,7 +31,7 @@ async function verifyCourseAccess(courseId: string, userId: string, role: string
   const course = await db
     .select()
     .from(courses)
-    .where(and(eq(courses.id, courseId), isNull(courses.deleted_at)))
+    .where(eq(courses.id, courseId))
     .limit(1);
 
   if (course.length === 0) {
@@ -50,7 +50,7 @@ lesson.get("/:id/modules", async (c: Context) => {
   const courseData = await db
     .select()
     .from(courses)
-    .where(and(eq(courses.id, id), isNull(courses.deleted_at)))
+    .where(eq(courses.id, id))
     .limit(1);
 
   if (courseData.length === 0) {

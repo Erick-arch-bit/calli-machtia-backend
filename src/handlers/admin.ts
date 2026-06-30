@@ -133,7 +133,6 @@ admin.get("/courses", async (c: Context) => {
       price: courses.price,
       category: courses.category,
       published: courses.published,
-      deleted_at: courses.deleted_at,
       created_at: courses.created_at,
       updated_at: courses.updated_at,
       instructor_name: users.name,

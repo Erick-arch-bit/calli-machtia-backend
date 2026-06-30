@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db/postgres";
@@ -34,7 +34,7 @@ enrollment.post("/", authMiddleware, async (c: Context) => {
   const courseExists = await db
     .select()
     .from(courses)
-    .where(and(eq(courses.id, course_id), isNull(courses.deleted_at)))
+    .where(eq(courses.id, course_id))
     .limit(1);
 
   if (courseExists.length === 0) {
@@ -93,7 +93,7 @@ enrollment.get("/mine", authMiddleware, async (c: Context) => {
     .from(enrollments)
     .leftJoin(courses, eq(enrollments.course_id, courses.id))
     .leftJoin(users, eq(courses.instructor_id, users.id))
-    .where(and(eq(enrollments.user_id, userId), isNull(courses.deleted_at)));
+    .where(eq(enrollments.user_id, userId));
 
   return c.json({ data: result });
 });

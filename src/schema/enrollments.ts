@@ -14,6 +14,8 @@ export const enrollments = pgTable(
       .notNull(),
     status: text("status").default("active").notNull(),
     progress: decimal("progress", { precision: 5, scale: 2 }).default("0"),
+    enrolled_at: timestamp("enrolled_at", { withTimezone: true }).defaultNow().notNull(),
+    completed_at: timestamp("completed_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

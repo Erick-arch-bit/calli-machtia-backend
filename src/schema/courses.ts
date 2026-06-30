@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, uuid, decimal, boolean } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { users } from "./users";
 
 export const courses = pgTable("courses", {
@@ -12,11 +13,10 @@ export const courses = pgTable("courses", {
   image_url: text("image_url"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   category: text("category"),
-  tags: text("tags").array(),
+  tags: text("tags").array().default(sql`'{}'`).notNull(),
   published: boolean("published").default(false),
   seo_title: text("seo_title"),
   seo_description: text("seo_description"),
-  deleted_at: timestamp("deleted_at", { withTimezone: true }),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
