@@ -1,6 +1,6 @@
 # API Calli Machtia
 
-**Base URL:** `https://calli-machtia-backend.up.railway.app`
+**Base URL:** `https://calli-machtia-backend-production.up.railway.app`
 
 ---
 
