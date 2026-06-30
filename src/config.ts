@@ -12,12 +12,7 @@ export const config = {
   corsOrigin: (process.env.CORS_ORIGIN || "http://localhost:3000").split(",").map((s) => s.trim()),
   rateLimit: parseInt(process.env.RATE_LIMIT || "100"),
   env: process.env.ENV || "development",
-  smtp: {
-    host: process.env.SMTP_HOST || "",
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    user: process.env.SMTP_USER || "",
-    pass: process.env.SMTP_PASS || "",
-    from: process.env.SMTP_FROM || "noreply@calli-machtia.com",
-  },
+  resendApiKey: process.env.RESEND_API_KEY || "",
+  resendFrom: process.env.RESEND_FROM || "onboarding@resend.dev",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
 };
