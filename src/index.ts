@@ -95,10 +95,27 @@ async function start() {
   console.log(`MONGODB_URI set: ${!!process.env.MONGODB_URI}`);
   console.log(`REDIS_URL set: ${!!process.env.REDIS_URL}`);
 
-  Bun.serve({
-    port: config.port,
-    fetch: app.fetch,
-  });
+  try {
+    const server = Bun.serve({
+      port: config.port,
+      hostname: "0.0.0.0",
+      fetch: app.fetch,
+    });
+    console.log(`Server running on ${server.hostname}:${server.port}`);
+  } catch (err: any) {
+    if (err.code === "EADDRINUSE") {
+      const fallback = parseInt(config.port) + 1;
+      console.log(`Port ${config.port} in use, trying ${fallback}`);
+      const server = Bun.serve({
+        port: fallback,
+        hostname: "0.0.0.0",
+        fetch: app.fetch,
+      });
+      console.log(`Server running on ${server.hostname}:${server.port} (fallback)`);
+    } else {
+      throw err;
+    }
+  }
 }
 
 start().catch((err) => {
