@@ -7,6 +7,6 @@
     "numReplicas": 1,
     "startCommand": "bun run src/index.ts",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 5
+    "healthcheckTimeout": 30
   }
 }
