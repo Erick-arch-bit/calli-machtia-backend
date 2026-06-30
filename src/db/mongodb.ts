@@ -5,6 +5,8 @@ export async function connectMongoDB(): Promise<void> {
   try {
     await mongoose.connect(config.mongodbUri, {
       dbName: config.mongodbDatabase,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
     });
     console.log("MongoDB connected");
   } catch (err) {

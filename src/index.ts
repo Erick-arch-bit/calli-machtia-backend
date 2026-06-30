@@ -49,7 +49,7 @@ app.get("/health", async (c) => {
   const mongo = await pingMongoDB();
   const redis = await pingRedis();
 
-  const healthy = pg && mongo;
+  const healthy = pg;
 
   return c.json(
     {
