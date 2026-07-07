@@ -15,4 +15,8 @@ export const config = {
   resendApiKey: process.env.RESEND_API_KEY || "",
   resendFrom: process.env.RESEND_FROM || "onboarding@resend.dev",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+  cloudinaryUrl: process.env.CLOUDINARY_URL || "",
+  muxTokenId: process.env.MUX_TOKEN_ID || "",
+  muxTokenSecret: process.env.MUX_TOKEN_SECRET || "",
+  muxWebhookSecret: process.env.MUX_WEBHOOK_SECRET || "",
 };

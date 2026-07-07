@@ -19,6 +19,70 @@ const createIntentSchema = z.object({
   course_id: z.string().uuid("ID de curso inválido"),
 });
 
+const checkoutSchema = z.object({
+  course_id: z.string().uuid("ID de curso inválido"),
+});
+
+payment.post("/checkout", authMiddleware, async (c: Context) => {
+  const userId = c.get("user_id") as string;
+  const body = await c.req.json();
+  const parsed = checkoutSchema.safeParse(body);
+
+  if (!parsed.success) {
+    throw badRequest(parsed.error.errors[0].message);
+  }
+
+  if (!stripe) {
+    throw internal("Stripe no está configurado");
+  }
+
+  const { course_id } = parsed.data;
+
+  const [courseItem] = await db
+    .select()
+    .from(courses)
+    .where(eq(courses.id, course_id))
+    .limit(1);
+
+  if (!courseItem) {
+    throw notFound("Curso no encontrado");
+  }
+
+  const existingEnrollment = await db
+    .select()
+    .from(enrollments)
+    .where(and(eq(enrollments.user_id, userId), eq(enrollments.course_id, course_id)))
+    .limit(1);
+
+  if (existingEnrollment.length > 0) {
+    throw badRequest("Ya estás inscrito en este curso");
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: { name: courseItem.title },
+            unit_amount: Math.round(parseFloat(courseItem.price) * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: { user_id: userId, course_id },
+      success_url: `${config.frontendUrl}/cursos/${courseItem.slug}?pago=exitoso`,
+      cancel_url: `${config.frontendUrl}/cursos/${courseItem.slug}?pago=cancelado`,
+    });
+
+    return c.json({ data: { url: session.url } });
+  } catch (err) {
+    console.error("Stripe checkout error:", err);
+    throw internal("Error al crear sesión de pago");
+  }
+});
+
 payment.post("/create-intent", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const body = await c.req.json();

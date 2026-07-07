@@ -13,6 +13,8 @@ import enrollmentHandler from "./handlers/enrollment";
 import lessonHandler from "./handlers/lesson";
 import paymentHandler from "./handlers/payment";
 import adminHandler from "./handlers/admin";
+import uploadHandler from "./handlers/upload";
+import muxHandler from "./handlers/mux";
 import { eq } from "drizzle-orm";
 import { db } from "./db/postgres";
 import { courses } from "./schema/courses";
@@ -82,6 +84,8 @@ app.route("/api/courses", lessonHandler);
 app.route("/api/enrollments", enrollmentHandler);
 app.route("/api/payments", paymentHandler);
 app.route("/api/admin", adminHandler);
+app.route("/api/uploads", uploadHandler);
+app.route("/api/uploads", muxHandler);
 
 // Connect services and start server
 async function start() {

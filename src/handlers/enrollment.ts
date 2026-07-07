@@ -20,6 +20,19 @@ const progressSchema = z.object({
   progress: z.number().min(0).max(100, "El progreso debe estar entre 0 y 100"),
 });
 
+enrollment.get("/check/:courseId", authMiddleware, async (c: Context) => {
+  const userId = c.get("user_id") as string;
+  const { courseId } = c.req.param();
+
+  const existing = await db
+    .select({ id: enrollments.id })
+    .from(enrollments)
+    .where(and(eq(enrollments.user_id, userId), eq(enrollments.course_id, courseId)))
+    .limit(1);
+
+  return c.json({ data: { enrolled: existing.length > 0 } });
+});
+
 enrollment.post("/", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const body = await c.req.json();
