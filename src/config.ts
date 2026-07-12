@@ -4,7 +4,12 @@ export const config = {
   mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017",
   mongodbDatabase: process.env.MONGODB_DATABASE || "calli_machtia",
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
-  jwtSecret: process.env.JWT_SECRET || "dev-secret-change-in-production",
+  jwtSecret: (() => {
+    if (!process.env.JWT_SECRET && (process.env.ENV === "production" || process.env.NODE_ENV === "production")) {
+      throw new Error("JWT_SECRET must be set in production");
+    }
+    return process.env.JWT_SECRET || "dev-secret-change-in-production";
+  })(),
   jwtAccessExpiry: process.env.JWT_ACCESS_EXPIRY || "15m",
   jwtRefreshExpiry: process.env.JWT_REFRESH_EXPIRY || "7d",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
