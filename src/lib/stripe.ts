@@ -1,3 +1,7 @@
+/**
+ * Cliente de Stripe para procesamiento de pagos.
+ * Se inicializa solo si STRIPE_SECRET_KEY está configurada.
+ */
 import Stripe from "stripe";
 import { config } from "../config";
 

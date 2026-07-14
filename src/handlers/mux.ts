@@ -1,3 +1,8 @@
+/**
+ * Handler de integración con Mux (video).
+ * Genera URLs de subida para lecciones y procesa webhooks
+ * cuando los videos están listos para reproducción.
+ */
 import { Hono } from "hono";
 import Mux from "@mux/mux-node";
 import { eq } from "drizzle-orm";
@@ -9,6 +14,7 @@ import { badRequest, notFound, internal } from "../lib/errors";
 import { config } from "../config";
 import type { Context } from "hono";
 
+/** Inicializa el cliente de Mux verificando que las credenciales existan */
 function getMux() {
   if (!config.muxTokenId || !config.muxTokenSecret) {
     throw internal("Mux no está configurado");
@@ -20,9 +26,9 @@ function getMux() {
   });
 }
 
-// ── Mux: generar URL de subida ──
 const mux = new Hono();
 
+/** POST /upload-url — Genera una URL de subida firmada de Mux para una lección */
 mux.post("/upload-url", authMiddleware, async (c: Context) => {
   const { courseId, lessonId } = await c.req.json();
 
@@ -67,7 +73,7 @@ mux.post("/upload-url", authMiddleware, async (c: Context) => {
   }
 });
 
-// ── Mux: webhook ──
+/** POST /webhook — Recibe eventos de Mux y actualiza la lección con playback_id cuando el video está listo */
 mux.post("/webhook", async (c: Context) => {
   try {
     const body = await c.req.text();

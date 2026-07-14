@@ -1,3 +1,7 @@
+/**
+ * Handler de subida de imágenes a Cloudinary.
+ * Los usuarios autenticados pueden subir imágenes para cursos o perfiles.
+ */
 import { Hono } from "hono";
 import { v2 as cloudinary } from "cloudinary";
 import { authMiddleware } from "../middleware/auth";
@@ -7,6 +11,7 @@ import type { Context } from "hono";
 
 const upload = new Hono();
 
+/** POST /image — Sube una imagen a Cloudinary y retorna la URL pública y el public_id */
 upload.post("/image", authMiddleware, async (c: Context) => {
   if (!config.cloudinaryUrl) {
     throw internal("Cloudinary no está configurado");

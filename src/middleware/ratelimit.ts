@@ -1,7 +1,13 @@
+/**
+ * Middleware de rate limiting basado en Redis.
+ * Limita el número de solicitudes por IP en una ventana de 60 segundos.
+ * Si Redis no está disponible, permite el paso (degradación graceful).
+ */
 import type { Context, Next } from "hono";
 import { config } from "../config";
 import { getRedis } from "../db/redis";
 
+/** Middleware que limita solicitudes por IP usando un contador en Redis */
 export async function rateLimitMiddleware(c: Context, next: Next) {
   const redis = getRedis();
   if (!redis) {
@@ -26,7 +32,7 @@ export async function rateLimitMiddleware(c: Context, next: Next) {
       return c.json({ error: "Demasiadas solicitudes. Intente de nuevo en 60 segundos." }, 429);
     }
   } catch {
-    // Graceful degradation: if Redis fails, allow the request
+    // Degradación graceful: si Redis falla, se permite la solicitud
   }
 
   await next();

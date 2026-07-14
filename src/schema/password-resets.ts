@@ -1,3 +1,4 @@
+/** Esquema de la tabla "password_resets" para Drizzle ORM */
 import { pgTable, text, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
 
 export const passwordResets = pgTable("password_resets", {

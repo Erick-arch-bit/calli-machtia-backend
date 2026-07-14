@@ -1,6 +1,12 @@
+/**
+ * Conexión a MongoDB mediante Mongoose.
+ * Define los schemas de módulos y lecciones para el contenido estructurado
+ * de los cursos (almacenados en MongoDB por su naturaleza anidada).
+ */
 import mongoose from "mongoose";
 import { config } from "../config";
 
+/** Conecta a MongoDB con timeout de 5 segundos */
 export async function connectMongoDB(): Promise<void> {
   try {
     await mongoose.connect(config.mongodbUri, {
@@ -14,6 +20,7 @@ export async function connectMongoDB(): Promise<void> {
   }
 }
 
+/** Verifica que MongoDB responde correctamente mediante ping admin */
 export async function pingMongoDB(): Promise<boolean> {
   try {
     if (mongoose.connection.readyState !== 1) return false;
@@ -24,6 +31,7 @@ export async function pingMongoDB(): Promise<boolean> {
   }
 }
 
+/** Schema de una lección individual dentro de un módulo */
 const lessonSchema = new mongoose.Schema(
   {
     id: { type: String },
@@ -38,6 +46,7 @@ const lessonSchema = new mongoose.Schema(
   { _id: false }
 );
 
+/** Schema de un módulo que contiene un arreglo de lecciones */
 const moduleSchema = new mongoose.Schema(
   {
     _id: { type: String },

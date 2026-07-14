@@ -1,5 +1,9 @@
+/**
+ * Script de seed de base de datos.
+ * Inserta usuarios de prueba (admin, instructor, alumno) si no existen.
+ */
 import pg from "pg";
-import { config } from "./config";
+import { config } from "../config";
 
 const { Pool } = pg;
 

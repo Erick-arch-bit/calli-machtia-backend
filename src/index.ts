@@ -1,32 +1,33 @@
+/**
+ * Punto de entrada del servidor Calli Machtia API.
+ * Configura middlewares globales, define rutas principales, conecta servicios
+ * (PostgreSQL, MongoDB, Redis) e inicia el servidor HTTP con Bun.
+ */
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { config } from "./config";
-import { connectMongoDB, pingMongoDB } from "./db/mongodb";
-import { connectRedis, pingRedis } from "./db/redis";
-import { pingPostgres } from "./db/postgres";
-import { corsMiddleware } from "./middleware/cors";
-import { securityHeadersMiddleware } from "./middleware/security";
-import { rateLimitMiddleware } from "./middleware/ratelimit";
-import authHandler from "./handlers/auth";
-import courseHandler from "./handlers/course";
-import enrollmentHandler from "./handlers/enrollment";
-import lessonHandler from "./handlers/lesson";
-import paymentHandler from "./handlers/payment";
-import adminHandler from "./handlers/admin";
-import uploadHandler from "./handlers/upload";
-import muxHandler from "./handlers/mux";
+import { connectMongoDB, pingMongoDB, connectRedis, pingRedis, pingPostgres, db } from "./db";
+import { corsMiddleware, securityHeadersMiddleware, rateLimitMiddleware } from "./middleware";
+import {
+  authHandler,
+  courseHandler,
+  enrollmentHandler,
+  lessonHandler,
+  paymentHandler,
+  adminHandler,
+  uploadHandler,
+  muxHandler,
+} from "./handlers";
 import { eq } from "drizzle-orm";
-import { db } from "./db/postgres";
 import { courses } from "./schema/courses";
 
 const app = new Hono();
 
-// Global middleware
 app.use("*", corsMiddleware);
 app.use("*", securityHeadersMiddleware);
 app.use("*", rateLimitMiddleware);
 
-// Error handler
+/** Manejador global de errores. Convierte HTTPException en respuestas JSON estructuradas. */
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
     return c.json({ error: err.message }, err.status);
@@ -36,7 +37,7 @@ app.onError((err, c) => {
   return c.json({ error: "Error interno del servidor" }, 500);
 });
 
-// API info
+/** Ruta raíz: información de la API */
 app.get("/", (c) => {
   return c.json({
     name: "Calli Machtia API",
@@ -45,7 +46,7 @@ app.get("/", (c) => {
   });
 });
 
-// Health check
+/** Health check: verifica el estado de conexión de PostgreSQL, MongoDB y Redis */
 app.get("/health", async (c) => {
   const pg = await pingPostgres().catch(() => false);
   const mongo = await pingMongoDB().catch(() => false);
@@ -62,7 +63,7 @@ app.get("/health", async (c) => {
   });
 });
 
-// Categories
+/** Obtiene la lista de categorías de cursos publicados */
 app.get("/api/categories", async (c) => {
   const result = await db
     .select({ category: courses.category })
@@ -77,7 +78,6 @@ app.get("/api/categories", async (c) => {
   return c.json({ data: categories });
 });
 
-// Mount routes
 app.route("/api/auth", authHandler);
 app.route("/api/courses", courseHandler);
 app.route("/api/courses", lessonHandler);
@@ -87,7 +87,11 @@ app.route("/api/admin", adminHandler);
 app.route("/api/uploads", uploadHandler);
 app.route("/api/uploads", muxHandler);
 
-// Connect services and start server
+/**
+ * Inicializa los servicios y arranca el servidor HTTP.
+ * En entorno de test omite la conexión a MongoDB y Redis.
+ * Si el puerto configurado está ocupado, intenta con el siguiente.
+ */
 async function start() {
   if (config.env !== "test") {
     await connectMongoDB();

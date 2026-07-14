@@ -1,3 +1,7 @@
+/**
+ * Handlers de inscripciones: registro a cursos, consulta de inscripciones propias,
+ * consulta de alumnos por curso (instructores), actualización de progreso y cancelación.
+ */
 import { Hono } from "hono";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
@@ -12,14 +16,17 @@ import type { Context } from "hono";
 
 const enrollment = new Hono();
 
+/** Schema de validación para inscribirse a un curso */
 const enrollSchema = z.object({
   course_id: z.string().uuid("ID de curso inválido"),
 });
 
+/** Schema de validación para actualizar progreso */
 const progressSchema = z.object({
   progress: z.number().min(0).max(100, "El progreso debe estar entre 0 y 100"),
 });
 
+/** GET /check/:courseId — Verifica si el usuario autenticado está inscrito en un curso */
 enrollment.get("/check/:courseId", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const { courseId } = c.req.param();
@@ -33,6 +40,7 @@ enrollment.get("/check/:courseId", authMiddleware, async (c: Context) => {
   return c.json({ data: { enrolled: existing.length > 0 } });
 });
 
+/** POST / — Inscribe al usuario autenticado en un curso */
 enrollment.post("/", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const body = await c.req.json();
@@ -80,6 +88,7 @@ enrollment.post("/", authMiddleware, async (c: Context) => {
   return c.json({ data: created[0] }, 201);
 });
 
+/** GET /mine — Retorna todos los cursos en los que el usuario está inscrito */
 enrollment.get("/mine", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
 
@@ -111,6 +120,7 @@ enrollment.get("/mine", authMiddleware, async (c: Context) => {
   return c.json({ data: result });
 });
 
+/** GET /course/:courseId — Lista los alumnos inscritos en un curso (solo instructor/admin) */
 enrollment.get("/course/:courseId", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const { courseId } = c.req.param();
   const userId = c.get("user_id") as string;
@@ -148,6 +158,7 @@ enrollment.get("/course/:courseId", authMiddleware, roleMiddleware("instructor",
   return c.json({ data: result });
 });
 
+/** PUT /:id/progress — Actualiza el progreso de una inscripción (0-100) */
 enrollment.put("/:id/progress", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const { id } = c.req.param();
@@ -186,6 +197,7 @@ enrollment.put("/:id/progress", authMiddleware, async (c: Context) => {
   return c.json({ data: updated[0] });
 });
 
+/** DELETE /:id — Cancela/elimina una inscripción (solo el usuario propietario o admin) */
 enrollment.delete("/:id", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;

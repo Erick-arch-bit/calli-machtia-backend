@@ -1,3 +1,7 @@
+/**
+ * Handlers de cursos: CRUD completo con paginación, búsqueda y filtrado.
+ * Los instructores pueden gestionar sus propios cursos; los administradores pueden gestionar todos.
+ */
 import { Hono } from "hono";
 import { eq, and, like, or, sql, count } from "drizzle-orm";
 import { z } from "zod";
@@ -12,6 +16,7 @@ import type { Context } from "hono";
 
 const course = new Hono();
 
+/** Schema de validación para creación de curso */
 const createCourseSchema = z.object({
   title: z.string().min(1, "El título es requerido").max(200),
   description: z.string().optional(),
@@ -24,6 +29,7 @@ const createCourseSchema = z.object({
   seo_description: z.string().max(500).optional(),
 });
 
+/** Schema de validación para actualización de curso */
 const updateCourseSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
@@ -36,6 +42,7 @@ const updateCourseSchema = z.object({
   seo_description: z.string().max(500).optional(),
 });
 
+/** Genera un slug único a partir del título con sufijo aleatorio de 6 caracteres */
 function generateSlug(text: string): string {
   const base = text
     .toLowerCase()
@@ -47,6 +54,7 @@ function generateSlug(text: string): string {
   return `${base}-${suffix}`;
 }
 
+/** GET /instructor/mine — Retorna los cursos del instructor autenticado */
 course.get("/instructor/mine", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
 
@@ -59,6 +67,7 @@ course.get("/instructor/mine", authMiddleware, roleMiddleware("instructor", "adm
   return c.json({ data: result });
 });
 
+/** GET / — Lista cursos publicados con paginación, filtro por categoría y búsqueda por texto */
 course.get("/", async (c: Context) => {
   const query = c.req.query();
   const page = Math.max(1, parseInt(query.page || "1"));
@@ -127,6 +136,7 @@ course.get("/", async (c: Context) => {
   });
 });
 
+/** GET /slug/:slug — Obtiene un curso por su slug único */
 course.get("/slug/:slug", async (c: Context) => {
   const { slug } = c.req.param();
 
@@ -163,6 +173,7 @@ course.get("/slug/:slug", async (c: Context) => {
   return c.json({ data: result[0] });
 });
 
+/** GET /:id — Obtiene un curso por su ID */
 course.get("/:id", async (c: Context) => {
   const { id } = c.req.param();
 
@@ -199,6 +210,7 @@ course.get("/:id", async (c: Context) => {
   return c.json({ data: result[0] });
 });
 
+/** POST / — Crea un nuevo curso (requiere rol instructor o admin) */
 course.post("/", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const body = await c.req.json();
@@ -232,6 +244,7 @@ course.post("/", authMiddleware, roleMiddleware("instructor", "admin"), async (c
   return c.json({ data: created[0] }, 201);
 });
 
+/** PUT /:id — Actualiza un curso existente (solo el instructor propietario o admin) */
 course.put("/:id", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;
@@ -273,6 +286,7 @@ course.put("/:id", authMiddleware, roleMiddleware("instructor", "admin"), async 
   return c.json({ data: updated[0] });
 });
 
+/** DELETE /:id — Elimina un curso (solo el instructor propietario o admin) */
 course.delete("/:id", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;

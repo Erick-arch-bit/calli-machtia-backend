@@ -1,6 +1,11 @@
+/**
+ * Script de migración de base de datos.
+ * Crea las tablas necesarias (users, courses, enrollments, payments, password_resets)
+ * y los índices correspondientes en PostgreSQL.
+ */
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { config } from "./config";
+import { config } from "../config";
 
 const { Pool } = pg;
 

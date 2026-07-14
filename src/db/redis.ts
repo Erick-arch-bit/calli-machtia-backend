@@ -1,3 +1,9 @@
+/**
+ * Conexión a Redis mediante ioredis.
+ * Se usa para rate limiting y almacenamiento de refresh tokens.
+ * Implementa degradación graceful: si Redis no está disponible,
+ * la aplicación continúa funcionando con funcionalidad limitada.
+ */
 import Redis from "ioredis";
 import { config } from "../config";
 
@@ -20,6 +26,7 @@ try {
   console.warn("Redis not available, rate limiting and refresh tokens will be degraded");
 }
 
+/** Conecta a Redis (conexión lazy). Si falla, deshabilita Redis para la sesión. */
 export async function connectRedis(): Promise<void> {
   if (!redis) return;
   try {
@@ -31,6 +38,7 @@ export async function connectRedis(): Promise<void> {
   }
 }
 
+/** Verifica que Redis responde correctamente mediante PING */
 export async function pingRedis(): Promise<boolean> {
   if (!redis) return false;
   try {
@@ -41,6 +49,7 @@ export async function pingRedis(): Promise<boolean> {
   }
 }
 
+/** Retorna la instancia de Redis o null si no está disponible */
 export function getRedis(): Redis | null {
   return redis;
 }

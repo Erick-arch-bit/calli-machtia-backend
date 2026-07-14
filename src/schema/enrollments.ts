@@ -1,3 +1,4 @@
+/** Esquema de la tabla "enrollments" para Drizzle ORM */
 import { pgTable, text, timestamp, uuid, decimal, unique } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { courses } from "./courses";

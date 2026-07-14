@@ -1,3 +1,4 @@
+/** Configuración centralizada de la aplicación. Valores obtenidos de variables de entorno con defaults para desarrollo. */
 export const config = {
   port: parseInt(process.env.PORT || "8080"),
   databaseUrl: process.env.DATABASE_URL || "postgresql://localhost:5432/calli_machtia",

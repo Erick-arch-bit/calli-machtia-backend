@@ -1,3 +1,7 @@
+/**
+ * Handlers de pagos con Stripe: checkout session, payment intents,
+ * webhook para confirmar pagos exitosos e historial de pagos del usuario.
+ */
 import { Hono } from "hono";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
@@ -6,7 +10,6 @@ import { db } from "../db/postgres";
 import { payments } from "../schema/payments";
 import { courses } from "../schema/courses";
 import { enrollments } from "../schema/enrollments";
-import { users } from "../schema/users";
 import { stripe } from "../lib/stripe";
 import { config } from "../config";
 import { authMiddleware } from "../middleware/auth";
@@ -15,14 +18,17 @@ import type { Context } from "hono";
 
 const payment = new Hono();
 
+/** Schema de validación para crear PaymentIntent */
 const createIntentSchema = z.object({
   course_id: z.string().uuid("ID de curso inválido"),
 });
 
+/** Schema de validación para checkout session */
 const checkoutSchema = z.object({
   course_id: z.string().uuid("ID de curso inválido"),
 });
 
+/** POST /checkout — Crea una sesión de checkout en Stripe y redirige al usuario */
 payment.post("/checkout", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const body = await c.req.json();
@@ -83,6 +89,7 @@ payment.post("/checkout", authMiddleware, async (c: Context) => {
   }
 });
 
+/** POST /create-intent — Crea un PaymentIntent de Stripe y registra el pago como pendiente */
 payment.post("/create-intent", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const body = await c.req.json();
@@ -155,6 +162,7 @@ payment.post("/create-intent", authMiddleware, async (c: Context) => {
   }
 });
 
+/** POST /webhook — Recibe eventos de Stripe: confirma pagos exitosos y crea inscripciones */
 payment.post("/webhook", async (c: Context) => {
   if (!stripe) {
     throw internal("Stripe no está configurado");
@@ -217,6 +225,7 @@ payment.post("/webhook", async (c: Context) => {
   return c.json({ received: true });
 });
 
+/** GET / — Historial de pagos del usuario autenticado */
 payment.get("/", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
 

@@ -1,3 +1,8 @@
+/**
+ * Conexión a PostgreSQL mediante Drizzle ORM.
+ * Configura un pool de conexiones y exporta la instancia de base de datos
+ * tipada con el schema completo de la aplicación.
+ */
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { config } from "../config";
@@ -18,6 +23,7 @@ pool.on("error", (err) => {
 
 export const db = drizzle(pool, { schema });
 
+/** Verifica que PostgreSQL responde correctamente (SELECT 1) */
 export async function pingPostgres(): Promise<boolean> {
   try {
     await pool.query("SELECT 1");

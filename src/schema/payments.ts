@@ -1,3 +1,4 @@
+/** Esquema de la tabla "payments" para Drizzle ORM */
 import { pgTable, text, timestamp, uuid, decimal } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { courses } from "./courses";

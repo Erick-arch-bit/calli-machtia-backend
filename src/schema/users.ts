@@ -1,3 +1,4 @@
+/** Esquema de la tabla "users" para Drizzle ORM */
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {

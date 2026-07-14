@@ -1,8 +1,13 @@
+/**
+ * Servicio de envío de emails mediante Resend.
+ * Si RESEND_API_KEY no está configurado, los correos se registran en consola.
+ */
 import { Resend } from "resend";
 import { config } from "../config";
 
 let resend: Resend | null = null;
 
+/** Retorna el cliente de Resend (inicialización lazy) o null si no hay API key */
 function getClient(): Resend | null {
   if (resend) return resend;
   if (!config.resendApiKey) {
@@ -13,6 +18,7 @@ function getClient(): Resend | null {
   return resend;
 }
 
+/** Envía un email de recuperación de contraseña con un enlace que expira en 1 hora */
 export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
   const resetUrl = `${config.frontendUrl}/reset-password?token=${token}`;
 

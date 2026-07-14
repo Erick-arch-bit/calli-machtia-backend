@@ -1,6 +1,11 @@
+/**
+ * Middleware CORS. Permite solicitudes desde orígenes configurados
+ * y maneja preflight requests (OPTIONS).
+ */
 import type { Context, Next } from "hono";
 import { config } from "../config";
 
+/** Middleware que configura headers CORS según la configuración y el origen de la solicitud */
 export async function corsMiddleware(c: Context, next: Next) {
   const origin = c.req.header("Origin") || "";
   const allowed = config.corsOrigin.includes(origin) || config.corsOrigin.includes("*");

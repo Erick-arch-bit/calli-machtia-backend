@@ -1,5 +1,9 @@
+/**
+ * Handlers administrativos. Todas las rutas requieren rol "admin".
+ * Incluye gestión de usuarios, cursos, estadísticas globales.
+ */
 import { Hono } from "hono";
-import { eq, like, or, count, sql, and, isNull } from "drizzle-orm";
+import { eq, like, or, count, sql, and } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/postgres";
 import { users } from "../schema/users";
@@ -12,15 +16,16 @@ import type { Context } from "hono";
 
 const admin = new Hono();
 
-// Apply auth + admin to all routes
 admin.use("*", authMiddleware, roleMiddleware("admin"));
 
+/** Schema de validación para actualizar rol de usuario */
 const updateRoleSchema = z.object({
   role: z.enum(["alumno", "instructor", "admin"], {
     errorMap: () => ({ message: "Rol inválido. Debe ser: alumno, instructor o admin" }),
   }),
 });
 
+/** GET /users — Lista usuarios con paginación, búsqueda y filtro por rol */
 admin.get("/users", async (c: Context) => {
   const query = c.req.query();
   const page = Math.max(1, parseInt(query.page || "1"));
@@ -78,6 +83,7 @@ admin.get("/users", async (c: Context) => {
   });
 });
 
+/** PUT /users/:id/role — Actualiza el rol de un usuario */
 admin.put("/users/:id/role", async (c: Context) => {
   const { id } = c.req.param();
   const body = await c.req.json();
@@ -114,6 +120,7 @@ admin.put("/users/:id/role", async (c: Context) => {
   return c.json({ data: updated[0] });
 });
 
+/** GET /courses — Lista todos los cursos (publicados y no publicados) con paginación */
 admin.get("/courses", async (c: Context) => {
   const query = c.req.query();
   const page = Math.max(1, parseInt(query.page || "1"));
@@ -154,6 +161,7 @@ admin.get("/courses", async (c: Context) => {
   });
 });
 
+/** GET /stats — Estadísticas globales: usuarios, cursos, inscripciones e ingresos totales */
 admin.get("/stats", async (c: Context) => {
   const totalUsers = await db.select({ count: count() }).from(users);
   const totalCourses = await db.select({ count: count() }).from(courses);
@@ -176,6 +184,7 @@ admin.get("/stats", async (c: Context) => {
   });
 });
 
+/** DELETE /courses/:id — Elimina un curso permanentemente (solo admin) */
 admin.delete("/courses/:id", async (c: Context) => {
   const { id } = c.req.param();
 

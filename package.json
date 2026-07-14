@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "migrate": "bun run src/migrate.ts",
-    "seed": "bun run src/seed.ts",
+    "migrate": "bun run src/scripts/migrate.ts",
+    "seed": "bun run src/scripts/seed.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push"
   },

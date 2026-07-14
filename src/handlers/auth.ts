@@ -1,3 +1,8 @@
+/**
+ * Handlers de autenticación y gestión de usuarios.
+ * Incluye registro, inicio de sesión, perfil, refresh tokens,
+ * recuperación de contraseña y cierre de sesión.
+ */
 import { Hono } from "hono";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -21,6 +26,7 @@ import type { Context } from "hono";
 
 const auth = new Hono();
 
+/** Schema de validación para registro de usuario */
 const registerSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(100),
   email: z.string().email("Email inválido"),
@@ -28,30 +34,36 @@ const registerSchema = z.object({
   role: z.enum(["alumno", "instructor"]).optional().default("alumno"),
 });
 
+/** Schema de validación para inicio de sesión */
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(1, "La contraseña es requerida"),
 });
 
+/** Schema de validación para renovación de token */
 const refreshSchema = z.object({
   refresh_token: z.string().min(1, "Refresh token requerido"),
 });
 
+/** Schema de validación para actualización de perfil */
 const profileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   avatar_url: z.string().max(500).optional(),
   bio: z.string().max(1000).optional(),
 });
 
+/** Schema de validación para solicitud de recuperación de contraseña */
 const forgotPasswordSchema = z.object({
   email: z.string().email("Email inválido"),
 });
 
+/** Schema de validación para restablecimiento de contraseña */
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token requerido"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").max(100),
 });
 
+/** Genera un slug a partir de un texto (sin sufijo aleatorio) */
 function generateSlug(text: string): string {
   return text
     .toLowerCase()
@@ -61,6 +73,7 @@ function generateSlug(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
+/** POST /register — Registra un nuevo usuario y retorna tokens de acceso */
 auth.post("/register", async (c: Context) => {
   const body = await c.req.json();
   const parsed = registerSchema.safeParse(body);
@@ -95,12 +108,13 @@ auth.post("/register", async (c: Context) => {
   if (redis) {
     try {
       await redis.set(`refresh_token:${userId}`, refreshToken, "EX", getRefreshTokenTTL());
-    } catch { /* graceful degradation */ }
+    } catch { /* degradación graceful si Redis falla */ }
   }
 
   return c.json({ data: { user, accessToken, refreshToken } }, 201);
 });
 
+/** POST /login — Autentica usuario y retorna tokens de acceso */
 auth.post("/login", async (c: Context) => {
   const body = await c.req.json();
   const parsed = loginSchema.safeParse(body);
@@ -138,12 +152,13 @@ auth.post("/login", async (c: Context) => {
   if (redis) {
     try {
       await redis.set(`refresh_token:${user.id}`, refreshToken, "EX", getRefreshTokenTTL());
-    } catch { /* graceful degradation */ }
+    } catch { /* degradación graceful si Redis falla */ }
   }
 
   return c.json({ data: { user: userData, accessToken, refreshToken } });
 });
 
+/** GET /me — Retorna los datos del usuario autenticado (requiere auth) */
 auth.get("/me", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
 
@@ -166,6 +181,7 @@ auth.get("/me", authMiddleware, async (c: Context) => {
   });
 });
 
+/** POST /refresh — Renueva el access token usando un refresh token válido */
 auth.post("/refresh", async (c: Context) => {
   const body = await c.req.json();
   const parsed = refreshSchema.safeParse(body);
@@ -190,7 +206,7 @@ auth.post("/refresh", async (c: Context) => {
         throw unauthorized("Refresh token inválido o expirado");
       }
     } catch {
-      // If Redis is unavailable, fall back to just JWT verification
+      // Si Redis no está disponible, se valida solo con JWT
     }
   }
 
@@ -204,6 +220,7 @@ auth.post("/refresh", async (c: Context) => {
   return c.json({ data: { accessToken } });
 });
 
+/** PUT /profile — Actualiza nombre, avatar o biografía del usuario autenticado */
 auth.put("/profile", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
   const body = await c.req.json();
@@ -242,6 +259,7 @@ auth.put("/profile", authMiddleware, async (c: Context) => {
   });
 });
 
+/** POST /logout — Elimina el refresh token de Redis y cierra la sesión */
 auth.post("/logout", authMiddleware, async (c: Context) => {
   const userId = c.get("user_id") as string;
 
@@ -249,12 +267,13 @@ auth.post("/logout", authMiddleware, async (c: Context) => {
   if (redis) {
     try {
       await redis.del(`refresh_token:${userId}`);
-    } catch { /* graceful degradation */ }
+    } catch { /* degradación graceful si Redis falla */ }
   }
 
   return c.json({ data: { message: "Sesión cerrada exitosamente" } });
 });
 
+/** POST /forgot-password — Envía email con token de recuperación (1 hora de expiración) */
 auth.post("/forgot-password", async (c: Context) => {
   const body = await c.req.json();
   const parsed = forgotPasswordSchema.safeParse(body);
@@ -270,7 +289,7 @@ auth.post("/forgot-password", async (c: Context) => {
   }
 
   const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+  const expiresAt = new Date(Date.now() + 3600000);
 
   await db.insert(passwordResets).values({
     id: uuidv4(),
@@ -284,6 +303,7 @@ auth.post("/forgot-password", async (c: Context) => {
   return c.json({ data: { message: "Si el email existe, recibirás un enlace de recuperación" } });
 });
 
+/** POST /reset-password — Valida el token y actualiza la contraseña del usuario */
 auth.post("/reset-password", async (c: Context) => {
   const body = await c.req.json();
   const parsed = resetPasswordSchema.safeParse(body);

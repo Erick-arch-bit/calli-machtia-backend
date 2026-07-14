@@ -1,5 +1,10 @@
+/**
+ * Handlers de módulos y lecciones (almacenados en MongoDB).
+ * CRUD completo de módulos y lecciones anidadas dentro de cada módulo.
+ * Solo instructores y admins pueden modificar; los alumnos consultan.
+ */
 import { Hono } from "hono";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db/postgres";
@@ -11,12 +16,14 @@ import type { Context } from "hono";
 
 const lesson = new Hono();
 
+/** Schema de validación para crear/actualizar un módulo */
 const moduleSchema = z.object({
   title: z.string().min(1, "El título es requerido").max(200),
   description: z.string().optional(),
   order: z.number().int().min(0).optional(),
 });
 
+/** Schema de validación para crear/actualizar una lección */
 const lessonSchema = z.object({
   title: z.string().min(1, "El título es requerido").max(200),
   description: z.string().optional(),
@@ -27,6 +34,7 @@ const lessonSchema = z.object({
   free: z.boolean().optional(),
 });
 
+/** Verifica que el curso exista y que el usuario tenga permisos para modificarlo */
 async function verifyCourseAccess(courseId: string, userId: string, role: string): Promise<void> {
   const course = await db
     .select()
@@ -43,7 +51,7 @@ async function verifyCourseAccess(courseId: string, userId: string, role: string
   }
 }
 
-// GET all modules for a course
+/** GET /:id/modules — Obtiene todos los módulos de un curso, ordenados por `order` */
 lesson.get("/:id/modules", async (c: Context) => {
   const { id } = c.req.param();
 
@@ -65,7 +73,7 @@ lesson.get("/:id/modules", async (c: Context) => {
   return c.json({ data: modules });
 });
 
-// GET single module with lessons
+/** GET /:id/modules/:moduleId — Obtiene un módulo específico con sus lecciones */
 lesson.get("/:id/modules/:moduleId", async (c: Context) => {
   const { id, moduleId } = c.req.param();
 
@@ -81,7 +89,7 @@ lesson.get("/:id/modules/:moduleId", async (c: Context) => {
   return c.json({ data: moduleData });
 });
 
-// POST create module
+/** POST /:id/modules — Crea un nuevo módulo en un curso (solo instructor/admin) */
 lesson.post("/:id/modules", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;
@@ -115,7 +123,7 @@ lesson.post("/:id/modules", authMiddleware, roleMiddleware("instructor", "admin"
   return c.json({ data: newModule.toObject() }, 201);
 });
 
-// PUT update module
+/** PUT /:id/modules/:moduleId — Actualiza un módulo existente (solo instructor/admin) */
 lesson.put("/:id/modules/:moduleId", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;
@@ -148,7 +156,7 @@ lesson.put("/:id/modules/:moduleId", authMiddleware, roleMiddleware("instructor"
   return c.json({ data: updated });
 });
 
-// DELETE module
+/** DELETE /:id/modules/:moduleId — Elimina un módulo y sus lecciones (solo instructor/admin) */
 lesson.delete("/:id/modules/:moduleId", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;
@@ -165,7 +173,7 @@ lesson.delete("/:id/modules/:moduleId", authMiddleware, roleMiddleware("instruct
   return c.json({ data: { message: "Módulo eliminado exitosamente" } });
 });
 
-// POST add lesson to module
+/** POST /:id/modules/:moduleId/lessons — Agrega una lección a un módulo (solo instructor/admin) */
 lesson.post("/:id/modules/:moduleId/lessons", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;
@@ -208,7 +216,7 @@ lesson.post("/:id/modules/:moduleId/lessons", authMiddleware, roleMiddleware("in
   return c.json({ data: newLesson }, 201);
 });
 
-// PUT update lesson
+/** PUT /:id/modules/:moduleId/lessons/:lessonId — Actualiza una lección específica (solo instructor/admin) */
 lesson.put("/:id/modules/:moduleId/lessons/:lessonId", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;
@@ -249,7 +257,7 @@ lesson.put("/:id/modules/:moduleId/lessons/:lessonId", authMiddleware, roleMiddl
   return c.json({ data: lessonData });
 });
 
-// DELETE lesson
+/** DELETE /:id/modules/:moduleId/lessons/:lessonId — Elimina una lección de un módulo (solo instructor/admin) */
 lesson.delete("/:id/modules/:moduleId/lessons/:lessonId", authMiddleware, roleMiddleware("instructor", "admin"), async (c: Context) => {
   const userId = c.get("user_id") as string;
   const role = c.get("role") as string;
