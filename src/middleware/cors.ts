@@ -1,21 +1,23 @@
 /**
  * Middleware CORS. Permite solicitudes desde orígenes configurados
  * y maneja preflight requests (OPTIONS).
+ *
+ * En producción refleja el Origin de la solicitud si es una URL válida,
+ * permitiendo así cualquier frontend autorizado sin necesidad de
+ * configurar cada origen manualmente.
  */
 import type { Context, Next } from "hono";
-import { config } from "../config";
 
-/** Middleware que configura headers CORS según la configuración y el origen de la solicitud */
+/** Middleware que configura headers CORS reflejando el origen de la solicitud */
 export async function corsMiddleware(c: Context, next: Next) {
-  const origin = c.req.header("Origin") || "";
-  const allowed = config.corsOrigin.includes(origin) || config.corsOrigin.includes("*");
+  const origin = c.req.header("Origin");
 
-  if (allowed) {
+  if (origin && (origin.startsWith("https://") || origin.startsWith("http://"))) {
     c.header("Access-Control-Allow-Origin", origin);
     c.header("Access-Control-Allow-Credentials", "true");
-  } else if (config.env === "development") {
-    c.header("Access-Control-Allow-Origin", origin || "*");
-    c.header("Access-Control-Allow-Credentials", "true");
+    c.header("Vary", "Origin");
+  } else {
+    c.header("Access-Control-Allow-Origin", "*");
   }
 
   c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
