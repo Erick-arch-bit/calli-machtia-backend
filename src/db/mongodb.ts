@@ -42,6 +42,8 @@ const lessonSchema = new mongoose.Schema(
     duration: { type: Number, default: 0 },
     order: { type: Number, default: 0 },
     free: { type: Boolean, default: false },
+    mux_playback_id: { type: String, default: "" },
+    mux_asset_id: { type: String, default: "" },
   },
   { _id: false }
 );
