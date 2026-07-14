@@ -78,7 +78,7 @@ payment.post("/checkout", authMiddleware, async (c: Context) => {
         },
       ],
       metadata: { user_id: userId, course_id },
-      success_url: `${config.frontendUrl}/cursos/${courseItem.slug}?pago=exitoso`,
+      success_url: `${config.frontendUrl}/cursos/${courseItem.slug}?pago=exitoso&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${config.frontendUrl}/cursos/${courseItem.slug}?pago=cancelado`,
     });
 
@@ -162,6 +162,71 @@ payment.post("/create-intent", authMiddleware, async (c: Context) => {
   }
 });
 
+/** POST /confirm — Verifica un pago ya realizado (session_id o payment_intent_id)
+ *  usando la Stripe Secret Key y crea la inscripción. No depende del webhook. */
+payment.post("/confirm", authMiddleware, async (c: Context) => {
+  const userId = c.get("user_id") as string;
+  const body = await c.req.json().catch(() => ({} as any));
+  const sessionId: string | undefined = body.session_id;
+  const paymentIntentId: string | undefined = body.payment_intent_id;
+
+  if (!stripe) throw internal("Stripe no está configurado");
+
+  let course_id: string | undefined;
+  let paid = false;
+
+  try {
+    if (sessionId) {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      course_id = session.metadata?.course_id;
+      paid = session.payment_status === "paid";
+      if (session.metadata?.user_id && session.metadata.user_id !== userId) {
+        throw badRequest("El pago no corresponde a este usuario");
+      }
+    } else if (paymentIntentId) {
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+      course_id = pi.metadata?.course_id;
+      paid = pi.status === "succeeded";
+      if (pi.metadata?.user_id && pi.metadata.user_id !== userId) {
+        throw badRequest("El pago no corresponde a este usuario");
+      }
+    } else {
+      throw badRequest("session_id o payment_intent_id requerido");
+    }
+  } catch (err) {
+    console.error("Stripe confirm error:", err);
+    if (err instanceof Error && (err as any).status === 400) throw err;
+    throw internal("No se pudo verificar el pago con Stripe");
+  }
+
+  if (!course_id) throw badRequest("No se encontró el curso en el pago");
+  if (!paid) throw badRequest("El pago aún no se ha completado");
+
+  const existing = await db
+    .select()
+    .from(enrollments)
+    .where(and(eq(enrollments.user_id, userId), eq(enrollments.course_id, course_id)))
+    .limit(1);
+
+  if (existing.length === 0) {
+    await db.insert(enrollments).values({
+      id: uuidv4(),
+      user_id: userId,
+      course_id,
+      status: "active",
+      progress: "0",
+    });
+  }
+
+  await db
+    .update(payments)
+    .set({ status: "completed" })
+    .where(and(eq(payments.user_id, userId), eq(payments.course_id, course_id)))
+    .catch(() => {});
+
+  return c.json({ data: { enrolled: true } });
+});
+
 /** POST /webhook — Recibe eventos de Stripe: confirma pagos exitosos y crea inscripciones */
 payment.post("/webhook", async (c: Context) => {
   if (!stripe) {
@@ -192,6 +257,38 @@ payment.post("/webhook", async (c: Context) => {
           .update(payments)
           .set({ status: "completed" })
           .where(eq(payments.stripe_payment_id, paymentIntent.id));
+
+        const existingEnrollment = await db
+          .select()
+          .from(enrollments)
+          .where(and(eq(enrollments.user_id, user_id), eq(enrollments.course_id, course_id)))
+          .limit(1);
+
+        if (existingEnrollment.length === 0) {
+          await db.insert(enrollments).values({
+            id: uuidv4(),
+            user_id,
+            course_id,
+            status: "active",
+            progress: "0",
+          });
+        }
+      }
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as any;
+      const { course_id, user_id } = session.metadata || {};
+      const paymentIntentId: string | undefined = session.payment_intent;
+
+      if (course_id && user_id) {
+        if (paymentIntentId) {
+          await db
+            .update(payments)
+            .set({ status: "completed" })
+            .where(eq(payments.stripe_payment_id, paymentIntentId))
+            .catch(() => {});
+        }
 
         const existingEnrollment = await db
           .select()
